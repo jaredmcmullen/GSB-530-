@@ -1,0 +1,155 @@
+---
+title: "GSB 530 Week 8 McMullen"
+author: "Jared McMullen"
+date: "3/1/2022"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(caret)
+library(rpart)
+library(randomForest)
+library(adabag)
+library(rpart.plot)
+library(pROC)
+library(forecast)
+library(gains)
+suppressWarnings(RNGversion("3.5.3"))
+options(scipen=9999, digits = 10)
+```
+
+
+Exercise 10-44 Algo (Using R) (problem 1)
+
+```{r}
+#import the data
+myData <- read_excel("~/Downloads/Ch10_Q44_V01_Data_File.xlsx")
+
+#factor the predictor variable
+myData$y <- as.factor(myData$y)
+
+#partition data
+set.seed(1)
+myIndex <- createDataPartition(myData$y, p=0.6, list=FALSE)
+trainSet <- myData[myIndex,]
+validationSet <- myData[-myIndex,]
+
+#create bagging tree model
+set.seed(1)
+bagging_tree <- randomForest(y ~ ., data = trainSet, ntree=100, mtry = 4, importance=TRUE)
+
+#get variable importance plot
+varImpPlot(bagging_tree, type=1)
+
+#get confusion matrix
+predicted_class <- predict(bagging_tree, validationSet)
+confusionMatrix(predicted_class, validationSet$y, positive="1")
+
+#create the gains table 
+predicted_prob <- predict(bagging_tree, validationSet, type="prob")
+validationSet$y <- as.numeric(as.character(validationSet$y))
+gains_table <- gains(validationSet$y, predicted_prob[,2])
+gains_table
+
+#plot the cumulative gains table chart
+plot(c(0, gains_table$cume.pct.of.total*sum(validationSet$y))~c(0, gains_table$cume.obs), xlab="# cases", ylab="Cumulative", type="l")
+lines(c(0, sum(validationSet$y))~c(0, dim(validationSet)[1]), col="red", lty=2)
+
+#plot the decile wise lift chart
+barplot(gains_table$mean.resp/mean(validationSet$y), names.arg = gains_table$depth, xlab="percentile", ylab="lift", ylim=c(0,3), main="Decile wise lift chart")
+
+#plot the auc
+roc_object <- roc(validationSet$y, predicted_prob[,2])
+plot.roc(roc_object)
+auc(roc_object)
+
+#create new data frame to get predictions based off of the bagging tree model 
+df <- matrix(c(3.45,1,18,5.8) , ncol=4, byrow=TRUE)
+colnames(df) <- c("x1", "x2", "x3","x4")
+rownames(df) <- c("predict")
+df <- as.data.frame(df)
+df$x1 <- as.numeric(df$x1)
+df$x2 <- as.numeric(df$x2)
+df$x3 <- as.numeric(df$x3)
+df$x4 <- as.numeric(df$x4)
+
+#make the prediction and get the percent chance of each class 
+predict <- predict(bagging_tree, df, type ="prob")
+predict
+```
+
+
+Exercise 10-52 Algo (Using R) (problem 2)
+
+```{r}
+#import the dataset
+myData <- read_excel("~/Downloads/Ch10_Q52_R_V04_Data_File.xlsx")
+myData$Disease <- as.factor(myData$Disease)
+
+#create testing and training
+set.seed(1)
+myIndex <- createDataPartition(myData$Disease, p=0.6, list=FALSE)
+trainSet <- myData[myIndex,]
+validationSet <- myData[-myIndex,]
+
+#create the bagging tree model 
+set.seed(1)
+bagging_tree <- randomForest(Disease ~., data=trainSet, ntree=100, mtry=4, importance=TRUE)
+
+#create variable importance chart
+varImpPlot(bagging_tree, type=1)
+
+#print out the confusion matrix
+predicted_class <- predict(bagging_tree, validationSet)
+confusionMatrix(predicted_class, validationSet$Disease, positive = "1")
+```
+
+Exercise 8-39 Algo (problem 3)
+
+```{r}
+#import the data set
+myData <- read_excel("~/Downloads/Ch8_Q39_V04_Data_File (1).xlsx")
+
+#scale the values 
+myData_scaled <- scale(myData[ ,])
+head(myData_scaled)
+pca <- prcomp(myData_scaled)
+# get summary of the pca used for variance scores
+summary(pca)
+
+#get the PCA weights 
+pca$rotation
+
+#get the actual PCA values
+pca$x
+
+#visualize this
+newData <- data.frame(myData, pca$x)
+newData <- newData[ , -(2:13)]
+head(newData)
+```
+Problem 8-50 (Problem 4)
+
+```{r}
+myData <- read_excel("~/Downloads/Ch8_Q50_V06_Data_File.xlsx")
+
+#How to answer Questions a-d
+myData.st <- scale(myData[ ,-1])
+head(myData.st)
+pca <- prcomp(myData.st)
+
+#summary for variance
+summary(pca)
+
+#PCA weights
+pca$rotation
+
+#PCA values
+pca$x
+
+#visualize
+newData <- data.frame(myData, pca$x)
+newData <- newData[ , -(2:13)]
+head(newData)
+```

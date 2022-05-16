@@ -1,0 +1,250 @@
+---
+title: "GSB 530 Assignment 7"
+author: "Jared McMullen"
+date: "2/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressWarnings(RNGversion("3.5.3"))
+library(caret)
+library(readxl)
+library(gains)
+library(rpart)
+library(here)
+library(rpart.plot)
+library(pROC)
+library(forecast)
+library(tidyverse)
+```
+
+Exercise 10-2 Algo
+
+a)
+```{r}
+#read the data for problem 1
+data <- read_excel("Ch10_Q2_V13_Data_File.xlsx")
+
+#Start question a
+data$Yield <- as.factor(data$Yield)
+set.seed(1)
+myIndex <- createDataPartition(data$Yield, p=.7, list=FALSE)
+trainSet <- data[myIndex,]
+validationSet <- data[-myIndex,]
+set.seed(1)
+default_tree <- rpart(Yield ~ Days, data=trainSet, method = "class")
+summary(default_tree)
+
+#view tree visually
+prp(default_tree, type=1, extra=1, under=TRUE)
+
+#grow the full tree
+set.seed(1)
+full_tree <- rpart(Yield ~ Days, data=trainSet, method="class", cp=0, minsplit=2, minbucket=1)
+prp(full_tree, type=1, extra=1, under=TRUE)
+printcp(full_tree)
+```
+
+
+b)
+```{r}
+data$Yield <- as.factor(data$Yield)
+set.seed(1)
+myIndex <- createDataPartition(data$Yield, p=.7, list=FALSE)
+trainSet <- data[myIndex,]
+validationSet <- data[-myIndex,]
+set.seed(1)
+default_tree <- rpart(Yield ~ Precipitation, data=trainSet, method = "class")
+summary(default_tree)
+
+prp(default_tree, type=1, extra=1, under=TRUE)
+
+#start developing the full tree
+set.seed(1)
+full_tree <- rpart(Yield ~ Precipitation, data=trainSet, method="class", cp=0, minsplit=2, minbucket=1)
+prp(full_tree, type=1, extra=1, under=TRUE)
+printcp(full_tree)
+```
+
+Exercise 10-18 Algo (Using R)
+
+
+```{r}
+#import dataset
+data2 <- read_excel("Ch10_Q18_V02_Data_File.xlsx")
+```
+
+```{r}
+#start question a-1
+data2$App <- as.factor(data2$App)
+set.seed(1)
+myIndex <- createDataPartition(data2$App, p=.7, list=FALSE)
+trainSet <- data2[myIndex,]
+validationSet <- data2[-myIndex,]
+set.seed(1)
+default_tree <- rpart(App ~ ., data=trainSet, method = "class")
+
+#get summary and visual for default tree
+summary(default_tree)
+prp(default_tree, type=1, extra=1, under=TRUE)
+
+#b-1
+set.seed(1)
+full_tree <- rpart(App ~ ., data=trainSet, method="class", cp=0, minsplit=2, minbucket=1)
+prp(full_tree, type=1, extra=1, under=TRUE)
+printcp(full_tree)
+#lowest value = .0086
+
+#d
+pruned_tree <- prune(full_tree, cp=0.0085715)
+prp(pruned_tree, type=1, extra=1, under=TRUE)
+predicted_class <- predict(pruned_tree, validationSet, type="class")
+confusionMatrix(predicted_class, validationSet$App, positive="1")
+
+#e
+#make the gains table
+predicted_prob <- predict(pruned_tree, validationSet, type="prob")
+head(predicted_prob)
+
+validationSet$App <- as.numeric(as.character(validationSet$App))
+gains_table <- gains(validationSet$App, predicted_prob[,2])
+gains_table
+
+#make the lift decile chart
+plot(c(0, gains_table$cume.pct.of.total*sum(validationSet$App))~c(0,gains_table$cume.obs), xlab="number of cases", ylab="Cumulative", main ="Cumulative Lift", type ="l")
+lines(c(0, sum(validationSet$App)) ~ c(0, dim(validationSet)[1]), col ="red", lty=2)
+barplot(gains_table$mean.resp/mean(validationSet$App), names.arg=gains_table$depth, xlab="percentile", ylab="lift", ylim=c(0,3), main= "decile-wise lift")
+
+#f
+#generate ROC Curve
+roc_object <- roc(validationSet$App, predicted_prob[,2])
+plot.roc(roc_object)
+auc(roc_object)
+
+#g-1
+data <- read_excel("~/Downloads/Ch10_Q18_Score_File.xlsx")
+predicted_class <- predict(pruned_tree, data, type="class")
+predicted_class
+
+#g-2
+predicted_class_probability <- predict(pruned_tree, data, type ="prob")
+predicted_class_probability
+
+```
+
+
+
+
+
+
+
+
+Exercise 10-23 Algo
+
+
+```{r}
+data <- read_excel("Ch10_Q23_V01_Data_File.xlsx")
+
+#a
+set.seed(1)
+myIndex <- createDataPartition(data$y, p=0.7, list=FALSE)
+trainSet <- data[myIndex,]
+validationSet <- data[-myIndex,]
+set.seed(1)
+full_tree <- rpart(y  ~ x1, data=trainSet, method="anova", cp = 0, minsplit = 2, minbucket = 1)
+prp(full_tree, type=1, extra=1, under=TRUE)
+printcp(full_tree)
+
+
+#b
+set.seed(1)
+full_tree <- rpart(y  ~ x2, data=trainSet, method="anova" , cp = 0, minsplit = 2, minbucket = 1)
+prp(full_tree, type=1, extra=1, under=TRUE)
+printcp(full_tree)
+
+#c
+data %>% 
+  filter(x1 >= 131)
+avg1 <- (143 + 194) / 2
+mse1 <- (1/2)*((143 - avg1)^2 + (194 - avg1)^2)
+
+data %>%
+  filter(x1 < 131) 
+avg2 <- (229 + 133) / 2
+mse2 <- (1/2)*((229-avg2)^2 + (133-avg2)^2)
+
+(.5*mse1) + (.5*mse2)
+
+#d
+#mse1
+data %>%
+  filter(x2 > 105) 
+avg1 <- (229 + 133 + 194) / 3
+mse1 <- (1/3)*((229 - avg1)^2 + (133 - avg1)^2 + (194 - avg1)^2)
+
+#mse2
+data %>%
+  filter(x2 <= 105) 
+avg2 <- 143
+mse2 <- (143-avg2)^2
+
+
+((3/4)*mse1) + ((1/4)*mse2)
+```
+
+
+Exercise 10-39 Algo (Using R)
+
+```{r}
+#b
+data <- read_excel("Ch10_Q39_V04_Data_File.xlsx");data
+
+data$Female <- as.factor(data$Female)
+set.seed(1)
+myIndex <- createDataPartition(data$Spending, p=0.7, list=FALSE)
+trainSet <- data[myIndex,]
+validationSet <- data[-myIndex,]
+set.seed(1)
+default_tree <- rpart(Spending ~ ., data=trainSet, method="anova")
+summary(default_tree)
+prp(default_tree, type=1, extra=1, under=TRUE)
+
+set.seed(1)
+full_tree <- rpart(Spending  ~ ., data=trainSet, method="anova", cp=0, minsplit=2, minbucket=1)
+prp(full_tree, type=1, extra=1, under=TRUE)
+printcp(full_tree)
+
+#d
+pruned_tree <- prune(full_tree, cp=0.0341)
+prp(pruned_tree, type=1, extra=1, under = TRUE)
+predicted_value <- predict(pruned_tree, validationSet)
+
+#e
+library(Metrics)
+library(MLmetrics)
+library(yardstick)
+
+
+accuracy(predicted_value, validationSet$Spending)
+
+data <-data.frame(predicted_value, validationSet$Spending)
+MAE(predicted_value, validationSet$Spending)
+RMSE(predicted_value, validationSet$Spending)
+MAPE(predicted_value, validationSet$Spending)
+mpe(data, predicted_value, validationSet.Spending)
+
+accuracy(predicted_value, validationSet$Spending)
+
+#f
+data <- read_excel("Ch10_Q39_Score_File.xlsx")
+data$Female <- as.factor(data$Female)
+predicted <- predict(pruned_tree, data)
+predicted
+mean(predicted)
+median(predicted)
+```
+
+
+
+

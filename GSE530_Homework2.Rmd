@@ -1,0 +1,103 @@
+---
+title: "GSE 530 Homework 2"
+author: "Jared McMullen"
+date: "1/10/2022"
+output: html_document
+---
+
+Homework 2
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+EXERCISE 2-11
+```{r}
+library(readxl)
+#a
+myData <- read_excel("~/Downloads/Ch2_Q11_V04_Data_File.xlsx")
+myData[order(myData$Writing, decreasing = TRUE),]
+myData[order(myData$Math),]
+
+#b
+length(which(myData$Math >600))
+length(which(myData$Writing <550))
+```
+
+Exercise 2-36 Algo
+```{r}
+myData <- read_excel("~/Downloads/Ch2_Q36_V20_Data_File.xlsx")
+#a
+myData$x1 <- as.numeric(myData$x1 * -1)
+recencybins <- quantile(myData$x1, probs = seq(0,1, by = 1/3))
+myData$recency <- cut(myData$x1, breaks=recencybins,labels=c('1', '2', '3'), include.lowest=TRUE, right=FALSE)
+table(myData$recency)
+#answer is 3 or 10
+
+#b
+myData$recency <- cut(myData$x2, breaks=3,labels=c('1', '2', '3'), include.lowest=TRUE, right=FALSE)
+table(myData$recency)
+
+#c
+myData$groups <- cut(myData$x3, breaks = c(-1, 50000, 100000, Inf),labels = c('1', '2', '3'))
+table(myData$groups)
+```
+
+Exercise 2-53 Algo
+
+```{r}
+myData <- read_excel("~/Downloads/Ch2_Q53_V20_Data_File.xlsx")
+myData$x1new <- ifelse(myData$x1 == 'S', 1, ifelse(myData$x1 == 'M', 2, ifelse(myData$x1 == 'L', 3,0)))
+#a
+mean(myData$x1new)
+#b
+unique(myData$x2)
+#c
+table(list(myData$x3))
+```
+
+Exercise 3-7 Algo
+```{r}
+#a-1
+myData <- read_excel("~/Downloads/Ch3_Q7_V11_Data_File.xlsx")
+Frequency <- table(myData$Quality)
+Frequency
+```
+
+Exercise 3-19 Static
+```{r}
+myData <- read_excel("~/Downloads/Ch3_Q19_Data_File.xlsx")
+#a-1
+intervals <- seq(1.70, 3.5, by=0.3)
+price.cut <- cut(myData$Price, intervals, left=FALSE, right=TRUE)
+price.freq <- table(price.cut)
+price.freq
+#a-3
+myData$groups <- cut(myData$Price, breaks = c(0, 2.60, Inf),labels = c('1', '2'))
+table(myData$groups)
+#b - create a histogram
+hist(myData$Price)
+```
+
+
+```{r}
+library(readxl)
+library(caret)
+myData <- read_excel("~/Downloads/Ch8_Q23_V20_Data_File.xlsx")
+#View(myData)
+myData$class1 <- ifelse(myData$`Class 1 Probability`>.25, 1, 0)
+confusionMatrix(factor(myData$`Actual Class`), factor(myData$class1))
+
+```
+
+```{r}
+(4+2)/
+
+
+myData <- read_excel("~/Downloads/Ch8_Q34_V14_Data_File.xlsx")
+
+View(myData)
+
+
+```

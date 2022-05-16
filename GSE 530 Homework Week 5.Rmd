@@ -1,0 +1,227 @@
+---
+title: "GSE 530 Homework Week 5"
+author: "Jared McMullen"
+date: "2/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+suppressWarnings(RNGversion("3.5.3"))
+library(caret)
+library(gains)
+library(pROC)
+library(readxl)
+library(klaR)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Exercise 9-1 Static (Using R)
+
+a)
+
+```{r}
+#necessary packages
+set.seed(1)
+#import dataset
+myData <- read_excel("~/Downloads/Ch9_Q1_Data_File (1).xlsx")
+myData1 <- scale(myData[2:3])
+myData1 <- data.frame(myData1, myData$y)
+colnames(myData1)[3] <- 'y'
+myData1$y <- as.factor(myData1$y) #Convert target variable to factor
+head(myData1)
+
+set.seed(1)
+myIndex <- createDataPartition(myData1$y, p = 0.6, list = FALSE)
+trainset <- myData1[myIndex, ]
+validationset <- myData1[-myIndex, ]
+myCtrl <- trainControl(method = "cv", number = 10)
+myGrid <- expand.grid(.k = c(1:10))
+#developing model and getting metrics
+set.seed(1)
+KNN_fit <- train(y ~.  , data = trainset, method = "knn", trControl=myCtrl, tuneGrid = myGrid)
+KNN_fit
+```
+b-1)
+
+```{r}
+KNN_Class <- predict(KNN_fit, newdata = validationset)
+
+confusionMatrix(KNN_Class, validationset$y, positive = '1')
+```
+Exercise 9-8 Static (Using R)
+
+a/b-1)
+
+```{r}
+myData <- read_excel("~/Downloads/Ch9_Q8_Data_File (1).xlsx")
+
+myData1 <- scale(myData[2:3])
+myData1 <- data.frame(myData1, myData$Admit)
+colnames(myData1)[3] <- 'y'
+myData1$y <- as.factor(myData1$y)
+head(myData1)
+
+#creating datasets
+set.seed(1)
+myIndex <- createDataPartition(myData1$y, p = 0.6, list = FALSE)
+trainset <- myData1[myIndex, ]
+validationset <- myData1[-myIndex, ]
+
+#cross validating
+myCtrl <- trainControl(method = "cv", number = 10)
+myGrid <- expand.grid(.k = c(1:10))
+
+#developing model and getting metrics
+set.seed(1)
+KNN_fit <- train(y~.,data = trainset, method = "knn", trControl=myCtrl, tuneGrid = myGrid)
+KNN_fit
+
+#confusionmatrix
+KNN_Class <- predict(KNN_fit, newdata = validationset)
+confusionMatrix(KNN_Class,factor(validationset$y), positive ='1')
+KNN_Class <- predict(KNN_fit, newdata = validationset, type = 'prob')
+```
+
+c-1)
+
+```{r}
+validationset$y <- as.numeric(as.character(validationset$y))
+gains_table <- gains(validationset$y, KNN_Class[,2])
+
+plot(c(0, gains_table$cume.pct.of.total*sum(validationset$y)) ~ c(0, gains_table$cume.obs),xlab = "# of cases", ylab="Cumulative", main="Cumulative Lift Chart", type = "l")
+lines(c(0, sum(validationset$y)) ~ c(0, dim(validationset)[1]), col='red', lty=2)
+
+roc_object<- roc(validationset$y, KNN_Class[,2])
+plot.roc(roc_object)
+auc(roc_object)
+```
+c-2)
+
+```{r}
+numerator <- table(validationset$y)
+(numerator/(numerator[1] + numerator[2]))[2]
+```
+
+d)
+
+```{r}
+myDataSat <- read_excel("~/Downloads/Ch9_Q8_Score_File.xlsx")
+
+KNN_Class <- predict(KNN_fit, newdata = myDataSat)
+KNN_Class[1]
+```
+
+
+Exercise 9-18 Algo (Using R)
+
+a) Naive Bayes classification 
+
+```{r}
+suppressWarnings(RNGversion("3.5.3"))
+library(caret)
+library(klaR)
+library(gains)
+library(pROC)
+
+myData <- read_excel("~/Downloads/Ch9_Q18_V11_Data_File.xlsx")
+myData$y <- as.factor(myData$y)
+#segment data
+set.seed(1)
+myIndex <- createDataPartition(myData$y, p=0.6, list = FALSE)
+trainSet <- myData[myIndex,]
+validationSet <- myData[-myIndex,]
+
+#cross validation
+myCtrl <- trainControl(method='cv', number=10)
+set.seed(1)
+nb_fit <- train(y ~., data = trainSet, method = "nb", trControl=myCtrl)
+nb_fit
+
+#confusion matrix
+nb_class <- predict(nb_fit, newdata = validationSet)
+
+confusionMatrix(nb_class, validationSet$y, positive = 'Yes') 
+
+#gains table
+nb_class_prob <- predict(nb_fit, newdata = validationSet, type='prob') 
+validationSet$y <- ifelse(validationSet$y == "Yes", 1, 0) 
+gains_table <- gains(validationSet$y, nb_class_prob[,2])
+gains_table
+
+#gains y-values
+(gains_table$mean.resp/mean(validationSet$y))[1]
+```
+b) gains table chart
+
+```{r}
+barplot(gains_table$mean.resp/mean(validationSet$y), names.arg=gains_table$depth, xlab='Percentile', ylab='Lift', ylim = c(0,1.5), main = 'Decile-Wise Lift Chart')
+```
+
+c-1) ROC Curve
+
+```{r}
+roc_object<- roc(validationSet$y, nb_class_prob[,2])
+plot.roc(roc_object)
+auc(roc_object)
+```
+d)
+
+```{r}
+myScoreData <- read_excel("~/Downloads/Ch9_Q18_V11_Score_File.xlsx")
+nb_class_score <- predict(nb_fit, newdata = myScoreData)
+myScoreData <- data.frame(myScoreData, nb_class_score)
+myScoreData
+```
+Exercise 9-33 Static (Using R)
+
+a through d)
+
+```{r}
+#binning
+set.seed(1)
+myData <- read_excel("~/Downloads/Ch9_Q33_Data_File.xlsx")
+myData$age_bins <- cut(myData$Age, breaks = c(22, 45, 85) , right = FALSE, include.lowest = TRUE, labels = c("1", "2"))
+myData$income_bins <- cut(myData$Income, breaks = c(0, 85000, 300000), right = FALSE, include.lowest = TRUE,labels = c("1", "2"))
+age_bins[1:2]
+income_bins[1:2]
+
+#convert to factor
+myData$Rental <- as.factor(myData$Rental)
+#segment data
+set.seed(1)
+myIndex <- createDataPartition(myData$Rental, p=0.6, list = FALSE)
+trainSet <- myData[myIndex,]
+validationSet <- myData[-myIndex,]
+
+#cross validation
+myCtrl <- trainControl(method='cv', number=10)
+set.seed(1)
+nb_fit <- train(Rental ~Own + Children + age_bins + income_bins, data = trainSet, method = "nb", trControl=myCtrl)
+nb_fit
+
+#confusion matrix
+nb_class <- predict(nb_fit, newdata = validationSet, type = 'prob')
+nb_class_percentage <- ifelse(nb_class[,2]>.50,"1", "0")
+confusionMatrix(as.factor(nb_class_percentage), factor(validationSet$Rental), positive = '1') 
+
+#gains table
+nb_class_prob <- predict(nb_fit, newdata = validationSet, type = 'prob')
+validationSet$Rental <- as.numeric(as.character(validationSet$Rental))
+gains_table <- gains(validationSet$Rental, nb_class_prob[,2])
+gains_table
+
+#cumulative lift chart
+plot(c(0, gains_table$cume.pct.of.total*sum(validationSet$Rental)) ~ c(0, gains_table$cume.obs),xlab = "# of cases", ylab="Cumulative", main="Cumulative Lift Chart", type = "l")
+lines(c(0, sum(validationSet$Rental)) ~ c(0, dim(validationSet)[1]), col='red', lty=2)
+
+#lift chart
+barplot(gains_table$mean.resp/mean(validationSet$Rental), names.arg=gains_table$depth, xlab='Percentile', ylab='Lift', ylim = c(0,1.5), main = 'Decile-Wise Lift Chart')
+#obtain y value for lift chart
+(gains_table$mean.resp/mean(validationSet$Rental))
+
+#auc curve
+roc_object<- roc(validationSet$Rental, as.numeric(nb_class_prob[,2]))
+plot.roc(roc_object)
+auc(roc_object)
+```
+

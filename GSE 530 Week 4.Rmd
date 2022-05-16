@@ -1,0 +1,76 @@
+---
+title: "GSE S530 Week 4"
+author: "Jared McMullen"
+date: "1/29/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Exercise 6-15 Algo
+
+a)
+```{r}
+library(readxl)
+myData <- read_excel("~/Downloads/Ch6_Q15_V09_Data_File.xlsx")
+
+model <- lm(Price ~ Sqft + Beds + Baths + Colonial, data = myData)
+summary(model)
+```
+
+b)
+
+```{r}
+predict <- predict(model, data.frame(Sqft=2500, Beds=3, Baths=2, Colonial=1))
+predict
+```
+
+Exercise 6-19 Algo
+
+a)
+```{r}
+myData <- read_excel("~/Downloads/Ch6_Q19_V01_Data_File.xlsx")
+
+model <- lm(Final ~ Midterm, data = myData);summary(model)
+```
+
+b/c)
+
+```{r}
+N <- 32; K <- 1
+e1 <- residuals(model)
+SSE1 <- sum(e1^2)
+SST <- sum((myData$Final - mean(myData$Final))^2)
+se1 <- sqrt(SSE1 / (N-K)); Rsq1 <- 1-(SSE1/SST);se1;Rsq1
+```
+
+Exercise 7-42 Static
+
+a)
+
+```{r}
+y <- exp((-.188 + 3.852*.4))/(1+ exp((-.188 + 3.852*.4)))
+y
+```
+
+Exercise 7-46 Algo
+
+a-1)
+
+```{r}
+myData <- read_excel("~/Downloads/Ch7_Q46_V06_Data_File.xlsx")
+model <- glm(Purchase ~ Age, data = myData, family=binomial(link="logit")) ;summary(model)
+```
+a-2)
+
+```{r}
+predict <- predict(model, data.frame(Age=20), type = 'response')
+predict
+predict <- predict(model, data.frame(Age=30), type = 'response')
+predict
+```
+
+
